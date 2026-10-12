@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#f5f4ef">
+	<title>FLOW | Chat</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			color-scheme: light;
+			--ink: #20241f;
+			--muted: #858982;
+			--line: #e9e9e2;
+			--paper: #fff;
+			--canvas: #f5f4ef;
+			--green: #d6f36a;
+			--green-dark: #30421b;
+			--lavender: #eee9fc;
+			--peach: #fce8dc;
+			--blue: #e2efff;
+		}
+
+		* { box-sizing: border-box; }
+		[hidden] { display: none !important; }
+		body {
+			min-width: 320px;
+			min-height: 100vh;
+			margin: 0;
+			padding: 24px;
+			background: var(--canvas);
+			color: var(--ink);
+			font-family: "DM Sans", sans-serif;
+		}
+		.auth-screen {
+			width: min(980px, 100%);
+			min-height: 610px;
+			margin: auto;
+		display: grid;
+		grid-template-columns: 1fr .92fr;
+		overflow: hidden;
+		border: 1px solid #e8e7df;
+		border-radius: 14px;
+		background: var(--paper);
+		box-shadow: 0 18px 60px rgb(44 48 35 / 9%);
+		animation: arrive .45s ease-out both;
+	}
+	.auth-brand {
+		min-width: 0;
+		padding: 34px;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		background: #194c3c;
+		color: #fff;
+	}
+	.auth-brand .brand { font-size: 25px; }
+	.auth-brand .brand-mark { background: var(--green); color: #194c3c; }
+	.auth-preview { max-width: 350px; margin: 42px auto; }
+	.auth-kicker { margin-bottom: 18px; color: #d6f36a; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }
+	.auth-preview h2 { margin: 0 0 22px; font: 600 34px/1.12 "Space Grotesk", sans-serif; letter-spacing: 0; }
+	.preview-bubble { width: fit-content; max-width: 92%; margin: 9px 0; padding: 11px 14px; border-radius: 4px 14px 14px 14px; background: #fff; color: #28352e; font-size: 12px; line-height: 1.5; }
+	.preview-bubble.outgoing { margin-left: auto; border-radius: 14px 4px 14px 14px; background: var(--green); }
+	.auth-device-note { margin-top: 26px; color: #d0ded7; font-size: 11px; line-height: 1.6; }
+	.auth-panel { display: grid; place-items: center; padding: 42px; }
+	.auth-panel-inner { width: min(360px, 100%); }
+	.auth-eyebrow { margin: 0 0 10px; color: #728078; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+	.auth-title { margin: 0; font: 600 30px/1.2 "Space Grotesk", sans-serif; letter-spacing: 0; }
+	.auth-subtitle { margin: 8px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+	.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 21px; padding: 4px; border-radius: 9px; background: #f1f2ed; }
+	.auth-tab { height: 36px; border: 0; border-radius: 7px; background: transparent; color: #757a72; font-size: 12px; font-weight: 600; cursor: pointer; }
+	.auth-tab[aria-selected="true"] { background: white; color: var(--ink); box-shadow: 0 1px 4px rgb(35 42 27 / 10%); }
+	.auth-form { display: grid; gap: 14px; }
+	.auth-field { display: grid; gap: 7px; color: #51574f; font-size: 11px; font-weight: 600; }
+	.auth-field input { width: 100%; height: 43px; padding: 0 12px; border: 1px solid #e2e5dc; border-radius: 8px; outline: none; background: white; color: var(--ink); font-size: 13px; }
+	.auth-field input:focus { border-color: #91aa69; box-shadow: 0 0 0 3px rgb(214 243 106 / 22%); }
+	.password-wrap { position: relative; }
+	.password-wrap input { padding-right: 52px; }
+	.password-toggle { position: absolute; top: 0; right: 8px; height: 43px; padding: 0 5px; border: 0; background: transparent; color: #778078; font-size: 10px; font-weight: 700; cursor: pointer; }
+	.auth-submit { height: 44px; margin-top: 3px; border: 0; border-radius: 8px; background: #194c3c; color: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .18s, transform .18s; }
+	.auth-submit:hover { transform: translateY(-1px); background: #24654f; }
+	.auth-error { min-height: 16px; margin: 0; color: #b33d32; font-size: 11px; line-height: 1.45; }
+	.auth-footnote { margin: 21px 0 0; color: #858982; font-size: 10px; line-height: 1.55; }
+		button, input { font: inherit; }
+		button { color: inherit; }
+		.app {
+			width: min(1280px, 100%);
+			height: min(850px, calc(100vh - 48px));
+			min-height: 560px;
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: 310px minmax(0, 1fr);
+			overflow: hidden;
+			background: var(--paper);
+			border: 1px solid #e8e7df;
+			border-radius: 12px;
+			box-shadow: 0 18px 60px rgb(44 48 35 / 8%);
+			animation: arrive .45s ease-out both;
+		}
+		@keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+		.sidebar {
+			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			background: #fbfbf8;
+			border-right: 1px solid var(--line);
+		}
+		.brand-row {
+			height: 78px;
+			padding: 0 22px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			border-bottom: 1px solid var(--line);
+		}
+		.brand { display: flex; align-items: center; gap: 10px; font: 700 22px "Space Grotesk", sans-serif; letter-spacing: 0; }
+		.brand-mark { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; background: var(--green); font-size: 17px; }
+		.icon-button {
+			width: 36px;
+			height: 36px;
+			display: inline-grid;
+			place-items: center;
+			padding: 0;
+			border: 1px solid var(--line);
+			border-radius: 9px;
+			background: transparent;
+			cursor: pointer;
+			transition: background .18s, border-color .18s, transform .18s;
+		}
+		.icon-button:hover { background: #f0f1e9; border-color: #d9dccd; transform: translateY(-1px); }
+		.icon-button svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+		.side-content { padding: 21px 14px 12px; }
+		.section-heading { padding: 0 9px; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+		.search-wrap { height: 39px; margin: 0 5px 21px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--muted); }
+		.search-wrap svg { width: 16px; height: 16px; flex: none; stroke: currentColor; stroke-width: 1.8; fill: none; }
+		.search-wrap input { width: 100%; min-width: 0; padding: 0; outline: none; border: 0; color: var(--ink); background: transparent; font-size: 12px; }
+		.search-wrap input::placeholder { color: #a2a59e; }
+		.conversation-list { display: grid; gap: 3px; }
+		.conversation {
+			width: 100%;
+			min-height: 67px;
+			display: flex;
+			align-items: center;
+			gap: 11px;
+			padding: 9px 10px;
+			text-align: left;
+			border: 0;
+			border-radius: 9px;
+			background: transparent;
+			cursor: pointer;
+			transition: background .18s;
+		}
+		.conversation:hover { background: #f2f3ed; }
+		.conversation.active { background: #eef1e6; }
+		.avatar {
+			position: relative;
+			width: 42px;
+			height: 42px;
+			flex: 0 0 42px;
+			display: grid;
+			place-items: center;
+			border-radius: 14px;
+			color: #343a30;
+			font: 700 13px "Space Grotesk", sans-serif;
+		}
+		.avatar.green { background: var(--green); }
+		.avatar.lavender { background: var(--lavender); }
+		.avatar.peach { background: var(--peach); }
+		.avatar.blue { background: var(--blue); }
+		.presence { position: absolute; width: 11px; height: 11px; right: -2px; bottom: -2px; border: 2px solid white; border-radius: 50%; background: #73bd69; }
+		.conversation-copy { min-width: 0; flex: 1; }
+		.conversation-top, .conversation-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+		.conversation-name { overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+		.conversation-time, .conversation-preview { color: var(--muted); font-size: 11px; white-space: nowrap; }
+		.conversation-preview { max-width: 174px; overflow: hidden; margin-top: 5px; text-overflow: ellipsis; }
+		.unread { min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 5px; border-radius: 99px; background: var(--green); color: #39451d; font-size: 10px; font-weight: 700; }
+		.people-dialog { width: min(440px, calc(100% - 32px)); max-height: min(620px, calc(100dvh - 32px)); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px rgb(25 40 28 / 22%); }
+		.people-dialog::backdrop { background: rgb(24 32 27 / 44%); backdrop-filter: blur(2px); }
+		.people-panel { display: flex; max-height: min(620px, calc(100dvh - 32px)); flex-direction: column; padding: 22px; }
+		.people-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+		.people-title { margin: 0; font: 600 22px/1.25 "Space Grotesk", sans-serif; }
+		.people-description { margin: 5px 0 17px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+		.people-search { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #e2e5dc; border-radius: 8px; outline: none; background: white; color: var(--ink); font-size: 13px; }
+		.people-search:focus { border-color: #91aa69; box-shadow: 0 0 0 3px rgb(214 243 106 / 22%); }
+		.people-status { min-height: 20px; margin: 12px 0 5px; color: var(--muted); font-size: 11px; }
+		.people-list { min-height: 0; overflow: auto; }
+		.people-row { min-height: 62px; display: flex; align-items: center; gap: 11px; padding: 8px 0; border-top: 1px solid var(--line); }
+		.people-row .avatar { width: 40px; height: 40px; flex-basis: 40px; }
+		.people-copy { min-width: 0; flex: 1; }
+		.people-name { overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+		.people-presence { margin-top: 3px; color: var(--muted); font-size: 10px; }
+		.people-action { min-width: 82px; height: 33px; padding: 0 11px; border: 0; border-radius: 8px; background: #194c3c; color: white; font-size: 11px; font-weight: 700; cursor: pointer; }
+		.people-action:hover { background: #24654f; }
+		.people-action:disabled { cursor: wait; opacity: .6; }
+		.sidebar-bottom { margin-top: auto; padding: 14px 17px; border-top: 1px solid var(--line); }
+		.profile { display: flex; align-items: center; gap: 10px; }
+		.profile .avatar { width: 36px; height: 36px; flex-basis: 36px; border-radius: 12px; background: #f5d9be; }
+		.profile-copy { min-width: 0; flex: 1; }
+		.profile-name { font-size: 12px; font-weight: 700; }
+		.profile-status { margin-top: 2px; color: var(--muted); font-size: 10px; }
+		.chat { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+		.chat-header { height: 78px; flex: 0 0 78px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 27px; border-bottom: 1px solid var(--line); }
+		.chat-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+		.chat-person .avatar { width: 40px; height: 40px; flex-basis: 40px; }
+		.chat-name { font: 600 16px "Space Grotesk", sans-serif; }
+		.chat-presence { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--muted); font-size: 11px; }
+		.chat-presence::before { width: 7px; height: 7px; content: ""; border-radius: 50%; background: #75bd6b; }
+		.header-actions { display: flex; gap: 7px; }
+		.messages {
+			min-height: 0;
+			flex: 1;
+			overflow: auto;
+			padding: 26px clamp(16px, 5vw, 64px) 22px;
+			scroll-behavior: smooth;
+		}
+		.day-divider { display: flex; align-items: center; gap: 13px; margin: 3px 0 27px; color: #9a9d96; font-size: 10px; font-weight: 600; }
+		.day-divider::before, .day-divider::after { height: 1px; flex: 1; content: ""; background: var(--line); }
+		.message-row { display: flex; align-items: flex-end; gap: 9px; margin: 0 0 17px; animation: message-in .2s ease-out both; }
+		@keyframes message-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+		.message-row.mine { justify-content: flex-end; }
+		.message-avatar { width: 27px; height: 27px; flex: 0 0 27px; display: grid; place-items: center; border-radius: 9px; background: var(--lavender); font-size: 9px; font-weight: 700; }
+		.message-content { max-width: min(76%, 470px); }
+		.message-author { margin: 0 0 5px 3px; color: var(--muted); font-size: 10px; font-weight: 600; }
+		.bubble { padding: 11px 14px; border-radius: 4px 14px 14px 14px; background: #f3f3ef; color: #343832; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+		.mine .bubble { border-radius: 14px 4px 14px 14px; background: var(--green); color: #283119; }
+		.message-time { margin: 5px 2px 0; color: #a0a39c; font-size: 9px; }
+		.mine .message-time { text-align: right; }
+		.typing { width: max-content; display: none; align-items: center; gap: 4px; margin: 0 0 16px 36px; padding: 12px 14px; border-radius: 5px 13px 13px 13px; background: #f3f3ef; }
+		.typing.visible { display: flex; }
+		.typing span { width: 5px; height: 5px; border-radius: 50%; background: #92968e; animation: pulse 1s infinite ease-in-out; }
+		.typing span:nth-child(2) { animation-delay: .14s; }
+		.typing span:nth-child(3) { animation-delay: .28s; }
+		@keyframes pulse { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-3px); opacity: 1; } }
+		.composer-area { padding: 10px clamp(16px, 5vw, 64px) 20px; }
+		.composer { min-height: 54px; display: flex; align-items: flex-end; gap: 10px; padding: 8px 9px 8px 16px; border: 1px solid #e5e6dd; border-radius: 10px; background: #fff; box-shadow: 0 3px 12px rgb(36 42 24 / 4%); }
+		.composer:focus-within { border-color: #b7c779; box-shadow: 0 0 0 3px rgb(214 243 106 / 22%); }
+		.composer input { min-width: 0; flex: 1; height: 35px; padding: 0; outline: none; border: 0; color: var(--ink); background: transparent; font-size: 13px; }
+		.composer input::placeholder { color: #a0a39c; }
+		.send-button { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: var(--green); color: #283119; cursor: pointer; transition: background .16s, transform .16s; }
+		.send-button:hover { background: #c9eb50; transform: translateY(-1px); }
+		.send-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+		.composer-hint { margin-top: 8px; text-align: center; color: #a4a69f; font-size: 10px; }
+		.mobile-back { display: none; }
+		@media (max-width: 700px) {
+			body { padding: 0; }
+			.auth-screen { width: 100%; min-height: 100dvh; grid-template-columns: 1fr; border: 0; border-radius: 0; }
+			.auth-brand { min-height: 185px; padding: 23px 24px; }
+			.auth-preview { display: none; }
+			.auth-device-note { margin-top: 20px; }
+			.auth-panel { padding: 34px 24px; }
+			.app { width: 100%; height: 100dvh; min-height: 0; display: block; border: 0; border-radius: 0; }
+			.sidebar { position: absolute; inset: 0; z-index: 2; border: 0; transition: transform .25s ease; }
+			.chat { position: absolute; inset: 0; z-index: 1; background: white; }
+			.app.chat-open .sidebar { transform: translateX(-100%); }
+			.app.chat-open .chat { z-index: 3; }
+			.chat-header { height: 68px; flex-basis: 68px; padding: 0 15px; }
+			.mobile-back { display: inline-grid; margin-right: 1px; }
+			.messages { padding: 20px 15px 14px; }
+			.composer-area { padding: 8px 13px max(12px, env(safe-area-inset-bottom)); }
+			.header-actions .icon-button:first-child { display: none; }
+		}
+		@media (max-height: 650px) and (min-width: 701px) {
+			body { padding: 10px; }
+			.app { height: calc(100vh - 20px); }
+		}
+	</style>
+</head>
+<body>
+	<section class="auth-screen" id="auth-screen" aria-label="FLOW account">
+		<div class="auth-brand">
+			<div class="brand"><span class="brand-mark" aria-hidden="true">↗</span> FLOW</div>
+			<div class="auth-preview" aria-hidden="true">
+				<div class="auth-kicker">A LITTLE CLOSER, EVERY DAY</div>
+				<h2>Good conversations find their flow.</h2>
+				<div class="preview-bubble">Hey, are we still on for this weekend?</div>
+				<div class="preview-bubble outgoing">Wouldn't miss it. See you there!</div>
+			</div>
+			<div class="auth-device-note">Sign in on any device connected to the FLOW server.</div>
+		</div>
+		<div class="auth-panel">
+			<div class="auth-panel-inner">
+				<p class="auth-eyebrow">FLOW MESSENGER</p>
+				<h1 class="auth-title" id="auth-title">Welcome back</h1>
+				<p class="auth-subtitle" id="auth-subtitle">Log in to pick up where your conversations left off.</p>
+				<div class="auth-tabs" role="tablist" aria-label="Account access">
+					<button class="auth-tab" id="login-tab" type="button" role="tab" aria-selected="true">Log in</button>
+					<button class="auth-tab" id="signup-tab" type="button" role="tab" aria-selected="false">Sign up</button>
+				</div>
+				<form class="auth-form" id="auth-form">
+					<label class="auth-field" id="name-field" hidden>Name
+						<input id="auth-name" type="text" autocomplete="name" minlength="2" maxlength="60" placeholder="Your name" disabled>
+					</label>
+					<label class="auth-field">Email address
+						<input id="auth-email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+					</label>
+					<label class="auth-field">Password
+						<span class="password-wrap"><input id="auth-password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="At least 8 characters" required><button class="password-toggle" id="password-toggle" type="button" aria-label="Show password">Show</button></span>
+					</label>
+					<p class="auth-error" id="auth-error" role="alert"></p>
+					<button class="auth-submit" id="auth-submit" type="submit">Log in</button>
+				</form>
+				<p class="auth-footnote">Your FLOW account and messages are saved on the server hosting this app.</p>
+			</div>
+		</div>
+	</section>
+	<main class="app" id="app" hidden>
+		<aside class="sidebar" aria-label="Chats">
+			<div class="brand-row">
+				<div class="brand"><span class="brand-mark" aria-hidden="true">↗</span> FLOW</div>
+				<button class="icon-button" id="new-chat" type="button" aria-label="Start a new chat" title="New chat">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+				</button>
+			</div>
+			<div class="side-content">
+				<label class="search-wrap">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+					<input id="search" type="search" placeholder="Search conversations" aria-label="Search conversations">
+				</label>
+				<h2 class="section-heading"><span>Messages</span><span id="chat-count">04</span></h2>
+				<nav class="conversation-list" id="conversation-list" aria-label="Conversations"></nav>
+			</div>
+			<div class="sidebar-bottom">
+				<div class="profile">
+					<div class="avatar" id="profile-avatar">JD</div>
+					<div class="profile-copy"><div class="profile-name" id="profile-name">Jamie Davis</div><div class="profile-status" id="profile-email">Signed in</div></div>
+					<button class="icon-button" id="logout-button" type="button" aria-label="Log out" title="Log out">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M21 19V5"/></svg>
+					</button>
+				</div>
+			</div>
+		</aside>
+		<section class="chat" aria-label="Conversation">
+			<header class="chat-header">
+				<div class="chat-person">
+					<button class="icon-button mobile-back" id="back-button" type="button" aria-label="Back to conversations" title="Back to conversations">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+					</button>
+					<div class="avatar green" id="active-avatar">AM<span class="presence"></span></div>
+					<div><div class="chat-name" id="active-name">Alex Morgan</div><div class="chat-presence" id="active-status">Online now</div></div>
+				</div>
+				<div class="header-actions">
+					<button class="icon-button" type="button" aria-label="Search in conversation" title="Search in conversation" id="message-search">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+					</button>
+					<button class="icon-button" type="button" aria-label="More options" title="More options">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+					</button>
+				</div>
+			</header>
+			<div class="messages" id="messages" aria-live="polite"></div>
+			<div class="typing" id="typing" aria-label="Typing"><span></span><span></span><span></span></div>
+			<div class="composer-area">
+				<form class="composer" id="message-form">
+					<input id="message-input" type="text" autocomplete="off" placeholder="Write a message..." aria-label="Write a message">
+					<button class="send-button" type="submit" aria-label="Send message" title="Send message">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.2 18-3.9-7.9L2 9.2 21 3Z"/><path d="M10 13 21 3"/></svg>
+					</button>
+				</form>
+				<div class="composer-hint">Press Enter to send</div>
+			</div>
+		</section>
+	</main>
+	<dialog class="people-dialog" id="people-dialog" aria-labelledby="people-title">
+		<section class="people-panel">
+			<div class="people-heading">
+				<div>
+					<h2 class="people-title" id="people-title">Find people</h2>
+					<p class="people-description">Find FLOW members by name or email and start a conversation.</p>
+				</div>
+				<button class="icon-button" id="people-close" type="button" aria-label="Close people list">×</button>
+			</div>
+			<input class="people-search" id="people-search" type="search" autocomplete="off" placeholder="Search people" aria-label="Search FLOW members">
+			<p class="people-status" id="people-status" role="status" aria-live="polite"></p>
+			<div class="people-list" id="people-list"></div>
+		</section>
+	</dialog>
+	<script type="module" src="/app.js"></script>
+</body>
+</html>

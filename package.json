@@ -1,0 +1,12 @@
+{
+  "name": "flow-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FLOW chat demo served with Node.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
