@@ -1,28 +1,70 @@
 const crypto = require("node:crypto");
+const { execFile } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { promisify } = require("node:util");
+const { Pool } = require("pg");
 
 const port = Number(process.env.PORT) || 3002;
 const host = process.env.HOST || "0.0.0.0";
 const pagePath = path.join(__dirname, "hi.html");
+const databaseUrl = process.env.DATABASE_URL;
 const dataDirectory = path.resolve(process.env.FLOW_DATA_DIR || path.join(__dirname, "data"));
 const dataPath = path.join(dataDirectory, "flow-data.json");
 const pbkdf2 = promisify(crypto.pbkdf2);
 const sessions = new Map();
 const colors = ["green", "lavender", "peach", "blue"];
+const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
+const emptyDatabase = { users: [], conversations: [], messages: [] };
+let database = emptyDatabase;
 
-fs.mkdirSync(dataDirectory, { recursive: true });
-if (!fs.existsSync(dataPath)) {
-  fs.writeFileSync(dataPath, JSON.stringify({ users: [], conversations: [], messages: [] }, null, 2));
-}
-const database = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-if (!Array.isArray(database.users) || !Array.isArray(database.conversations) || !Array.isArray(database.messages)) {
-  throw new Error(`Invalid FLOW data file: ${dataPath}`);
+function validateDatabase(value) {
+  if (!value || !Array.isArray(value.users) || !Array.isArray(value.conversations) || !Array.isArray(value.messages)) {
+    throw new Error("FLOW storage has an invalid data structure.");
+  }
 }
 
-function saveDatabase() {
+async function initializeDatabase() {
+  if (pool) {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS flow_state (
+        id SMALLINT PRIMARY KEY CHECK (id = 1),
+        payload JSONB NOT NULL
+      )
+    `);
+    await pool.query(
+      "INSERT INTO flow_state (id, payload) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING",
+      [JSON.stringify(emptyDatabase)]
+    );
+    const result = await pool.query("SELECT payload FROM flow_state WHERE id = 1");
+    database = result.rows[0].payload;
+  } else {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("DATABASE_URL is required in production; refusing to use temporary local-file storage.");
+    }
+    fs.mkdirSync(dataDirectory, { recursive: true });
+    if (!fs.existsSync(dataPath)) {
+      fs.writeFileSync(dataPath, JSON.stringify(emptyDatabase, null, 2));
+    }
+    database = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+  }
+
+  validateDatabase(database);
+}
+
+async function saveDatabase() {
+  if (pool) {
+    const result = await pool.query(
+      "UPDATE flow_state SET payload = $1::jsonb WHERE id = 1",
+      [JSON.stringify(database)]
+    );
+    if (result.rowCount !== 1) {
+      throw new Error("FLOW storage row is missing; data was not saved.");
+    }
+    return;
+  }
+
   const temporaryPath = `${dataPath}.tmp`;
   fs.writeFileSync(temporaryPath, JSON.stringify(database, null, 2), { mode: 0o600 });
   fs.renameSync(temporaryPath, dataPath);
@@ -130,6 +172,11 @@ function getChatSummaries(user) {
 async function handleApi(request, response, url) {
   const route = url.pathname;
 
+  if (request.method === "GET" && route === "/api/health") {
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
   if (request.method === "POST" && route === "/api/signup") {
     const body = await readJson(request);
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -144,7 +191,7 @@ async function handleApi(request, response, url) {
     if (database.users.some((item) => item.email === email)) throw new HttpError(409, "An account with this email already exists. Log in instead.");
     const user = { id: crypto.randomUUID(), name, email, salt: salt.toString("hex"), passwordHash: passwordHash.toString("hex") };
     database.users.push(user);
-    saveDatabase();
+    await saveDatabase();
     const token = crypto.randomBytes(32).toString("hex");
     sessions.set(token, user.id);
     sendJson(response, 201, { token, user: publicUser(user) });
@@ -230,7 +277,7 @@ async function handleApi(request, response, url) {
         lastReadAt: {}
       };
       database.conversations.push(conversation);
-      saveDatabase();
+      await saveDatabase();
     }
     sendJson(response, 201, { chat: getChatSummaries(user).find((item) => item.id === conversation.id) });
     return;
@@ -252,7 +299,7 @@ async function handleApi(request, response, url) {
     ).at(-1);
     if (latestIncoming && latestIncoming.createdAt > (conversation.lastReadAt[user.id] || "")) {
       conversation.lastReadAt[user.id] = new Date().toISOString();
-      saveDatabase();
+      await saveDatabase();
     }
     sendJson(response, 200, { messages });
     return;
@@ -272,7 +319,7 @@ async function handleApi(request, response, url) {
     };
     database.messages.push(message);
     conversation.lastReadAt[user.id] = message.createdAt;
-    saveDatabase();
+    await saveDatabase();
     sendJson(response, 201, {
       message: { id: message.id, from: "me", text: message.text, time: formatTime(new Date(message.createdAt)) }
     });
@@ -354,6 +401,12 @@ server.on("listening", () => {
   const activePort = typeof address === "object" && address ? address.port : port;
   console.log(`FLOW is running at http://${host === "0.0.0.0" ? "localhost" : host}:${activePort}`);
   if (host === "0.0.0.0") console.log("For other devices on your network, open this computer's local IP address on the same port.");
+  if (process.env.FLOW_OPEN_BROWSER === "1" && process.platform === "win32") {
+    const url = `http://localhost:${activePort}`;
+    execFile("cmd.exe", ["/d", "/s", "/c", `start "" "${url}"`], { windowsHide: true }, (error) => {
+      if (error) console.error(`Could not open FLOW automatically. Open ${url} in your browser.`, error);
+    });
+  }
 });
 
 let usedFallbackPort = false;
@@ -368,4 +421,17 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 
-server.listen(port, host);
+async function startServer() {
+  await initializeDatabase();
+  server.listen(port, host);
+}
+
+startServer().catch((error) => {
+  console.error("FLOW could not initialize storage:", error);
+  if (pool) {
+    pool.end().catch((closeError) => {
+      console.error("FLOW database connection could not close cleanly:", closeError);
+    });
+  }
+  process.exitCode = 1;
+});

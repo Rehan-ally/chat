@@ -25,6 +25,18 @@ const safe = (value) => String(value).replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[char]);
 
+function serverUnavailableMessage(invalidResponse = false) {
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  if (isLocal) {
+    return invalidResponse
+      ? "This page is not connected to FLOW's sign-in server. On this computer, double-click Start FLOW.bat in the FLOW folder and use the page it opens. GitHub Pages and VS Code Preview cannot handle FLOW sign-in."
+      : "FLOW's sign-in server is not reachable. Double-click Start FLOW.bat in the FLOW folder, then use the page it opens.";
+  }
+  return invalidResponse
+    ? "FLOW received an invalid response from its server. Refresh the page; if this continues, the site may not be published with its Node server enabled."
+    : "FLOW's server could not be reached. Check your internet connection and try again.";
+}
+
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -32,14 +44,14 @@ async function api(path, options = {}) {
   try {
     response = await fetch(path, { ...options, headers });
   } catch {
-    throw new Error("FLOW's sign-in server is not reachable. Run `npm.cmd start` in the FLOW project folder, then open the address printed in the terminal.");
+    throw new Error(serverUnavailableMessage());
   }
 
   let result;
   try {
     result = await response.json();
   } catch {
-    throw new Error("This page is not connected to FLOW's sign-in server. Run `npm.cmd start` in the FLOW project folder, then open the address printed in the terminal.");
+    throw new Error(serverUnavailableMessage(true));
   }
 
   if (response.status === 401 && token) {
@@ -334,6 +346,7 @@ window.setInterval(async () => {
 }, 2000);
 
 try {
+  await api("/api/health");
   const savedToken = localStorage.getItem(tokenKey);
   if (savedToken) {
     token = savedToken;
@@ -341,8 +354,6 @@ try {
     await openChat(result.user, savedToken);
   }
 } catch (error) {
-  if (token) {
-    clearSession();
-    authError.textContent = error.message;
-  }
+  if (token) clearSession();
+  authError.textContent = error.message;
 }
